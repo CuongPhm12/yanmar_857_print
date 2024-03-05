@@ -1,0 +1,266 @@
+select {from_ser} as from_ser
+     , {to_ser} as to_ser
+     , {status_ser} as status_ser
+     , a.release_order_status
+     , case when a.release_order_status = '미접수' then '<span class="form-circle-sm" style="background-color:#ffffff;"><span style="color:black;">미접수</span></span>'
+            when a.release_order_status = '접수' then '<span class="form-circle-sm" style="background-color:orange;"><span style="color:white;">접수</span></span>'
+            when a.release_order_status = '완료' then '<span class="form-circle-sm" style="background-color:#4472c4;"><span style="color:white;">완료</span></span>'
+            else a.release_order_status end as status
+     , a.type
+     , case when a.type = 'wanted' then '전수배'
+            when a.type = 'cust' then '협력업체직출고'
+            when a.type = 'move' then '기대이동'
+            when a.type = 'storage' then '보관기이동'
+            else a.type end as type_name
+     , a.release_no
+     , a.sorder
+     , a.release_order_no
+     , a.release_order_date
+     , a.load_type
+     , a.driver_name
+     , a.driver_tel_no
+     , a.car_no
+     , a.delv_fee
+     , a.start_cd
+     , a.start_name
+     , a.start_tel_no
+     , a.start_fax_no
+     , a.start_address
+     , a.end_cd
+     , a.end_name
+     , a.end_tel_no
+     , a.end_fax_no
+     , a.end_address
+     , a.delv_cust_remark
+     , a.item_cd
+     , a.stock_id
+     , a.serial_id
+     , b.prod_type1
+     , b.carcass_cd
+     , b.sales_cd
+     , a.machine_no
+     , a.order_qty
+     , a.order_price
+     , a.order_amount
+     , a.option_1
+     , ot1.option_name as option_1_name
+     , a.option_2
+     , ot2.option_name as option_2_name
+     , a.option_3
+     , ot3.option_name as option_3_name
+     , a.agency_order_no
+     , a.start_date
+     , a.end_date
+     , case when a.release_no is null then ''
+            else concat(case when a.type = 'wanted' then '전수배'
+                             when a.type = 'cust' then '협력업체직출고'
+                             when a.type = 'move' then '기대이동'
+                             when a.type = 'storage' then '보관기이동'
+                             else a.type end, ' (전표번호 : ', a.release_no, ')') end as order_info
+  from (select od.release_order_status
+             , od.release_order_no
+             , od.release_order_date
+             , rm.release_no
+             , rd.sorder
+             , ifnull(rm.load_type, od.load_type) as load_type
+             , rm.driver_name
+             , rm.driver_tel_no
+             , rm.car_no
+             , rm.delv_fee
+             , od.start_agency_cd as start_cd
+             , sa.agency_name as start_name
+             , od.start_agency_tel_no as start_tel_no
+             , od.start_fax_no
+             , od.start_agency_address as start_address
+             , od.end_agency_cd as end_cd
+             , ea.agency_name as end_name
+             , od.end_agency_tel_no as end_tel_no
+             , od.end_fax_no
+             , od.end_agency_address as end_address
+             , od.delv_cust_remark
+             , od.item_cd
+             , od.stock_id
+             , od.serial_id
+             , sr.machine_no
+             , od.order_qty
+             , od.order_price
+             , od.order_amount
+             , od.option_1
+             , od.option_2
+             , od.option_3
+             , 'wanted' as type
+             , od.agency_order_no
+             , od.start_date
+             , od.end_date
+          from tb_release_order_wanted od
+          left join tb_release_wanted_detail rd on rd.release_order_no = od.release_order_no
+          left join tb_release_wanted rm on rm.release_no = rd.release_no
+          left join tb_product_serial sr on sr.serial_id = od.serial_id
+          left join tb_ma_agency sa on sa.agency_cd = od.start_agency_cd
+          left join tb_ma_agency ea on ea.agency_cd = od.end_agency_cd
+         where 1 = 1
+           and ifnull(od.release_order_status,'작성') <> '작성'
+           and (ifnull({from_ser},'') = '' or od.release_order_date >= {from_ser})
+           and (ifnull({to_ser},'') = '' or od.release_order_date <= {to_ser})
+           and (ifnull({status_ser},'') = '' or ({status_ser} = '미완료' and rm.release_no is null) or ({status_ser} = '완료' and rm.release_no is not null))
+
+        union all
+
+        select od.release_order_status
+             , od.release_order_no
+             , od.release_order_date
+             , rm.release_no
+             , rd.sorder
+             , ifnull(rm.load_type, od.load_type) as load_type
+             , rm.driver_name
+             , rm.driver_tel_no
+             , rm.car_no
+             , rm.delv_fee
+             , od.start_cust_cd as start_cd
+             , sc.cust_name as start_name
+             , od.start_cust_tel_no as start_tel_no
+             , od.start_fax_no
+             , od.start_cust_address as start_address
+             , od.end_agency_cd as end_cd
+             , ea.agency_name as end_name
+             , od.end_agency_tel_no as end_tel_no
+             , od.end_fax_no
+             , od.end_agency_address as end_address
+             , od.delv_cust_remark
+             , od.item_cd
+             , od.stock_id
+             , od.serial_id
+             , sr.machine_no
+             , od.order_qty
+             , od.order_price
+             , od.order_amount
+             , od.option_1
+             , od.option_2
+             , od.option_3
+             , 'cust' as type
+             , od.agency_order_no
+             , od.start_date
+             , od.end_date
+          from tb_release_order_cust od
+          left join tb_release_cust_detail rd on rd.release_order_no = od.release_order_no
+          left join tb_release_cust rm on rm.release_no = rd.release_no
+          left join tb_product_serial sr on sr.serial_id = od.serial_id
+          left join tb_ma_cust sc on sc.cust_cd = od.start_cust_cd
+          left join tb_ma_agency ea on ea.agency_cd = od.end_agency_cd
+         where 1 = 1
+           and ifnull(od.release_order_status,'작성') <> '작성'
+           and (ifnull({from_ser},'') = '' or od.release_order_date >= {from_ser})
+           and (ifnull({to_ser},'') = '' or od.release_order_date <= {to_ser})
+           and (ifnull({status_ser},'') = '' or ({status_ser} = '미완료' and rm.release_no is null) or ({status_ser} = '완료' and rm.release_no is not null))
+
+        union all
+
+        select od.release_order_status
+             , od.release_order_no
+             , od.release_order_date
+             , rm.release_no
+             , rd.sorder
+             , ifnull(rm.load_type, od.load_type) as load_type
+             , rm.driver_name
+             , rm.driver_tel_no
+             , rm.car_no
+             , rm.delv_fee
+             , od.start_agency_cd as start_cd
+             , sa.agency_name as start_name
+             , od.start_tel_no
+             , od.start_fax_no
+             , od.start_address
+             , od.end_agency_cd as end_cd
+             , ea.agency_name as end_name
+             , od.end_tel_no
+             , od.end_fax_no
+             , od.end_address
+             , od.delv_cust_remark
+             , od.item_cd
+             , od.stock_id
+             , od.serial_id
+             , od.machine_no
+             , od.order_qty
+             , od.order_price
+             , od.order_amount
+             , od.option_1
+             , od.option_2
+             , od.option_3
+             , 'move' as type
+             , '' as agency_order_no
+             , od.start_date
+             , od.end_date
+          from tb_release_order_move_wh od
+          left join tb_release_move_wh_detail rd on rd.release_order_no = od.release_order_no
+          left join tb_release_move_wh rm on rm.release_no = rd.release_no
+          left join tb_ma_agency sa on sa.agency_cd = od.start_agency_cd
+          left join tb_ma_agency ea on ea.agency_cd = od.end_agency_cd
+         where 1 = 1
+           and ifnull(od.release_order_status,'작성') <> '작성'
+           and (ifnull({from_ser},'') = '' or od.release_order_date >= {from_ser})
+           and (ifnull({to_ser},'') = '' or od.release_order_date <= {to_ser})
+           and (ifnull({status_ser},'') = '' or ({status_ser} = '미완료' and rm.release_no is null) or ({status_ser} = '완료' and rm.release_no is not null))
+
+        union all
+
+        select od.release_order_status
+             , od.release_order_no
+             , od.release_order_date
+             , rm.release_no
+             , rd.sorder
+             , ifnull(rm.load_type, od.load_type) as load_type
+             , rm.driver_name
+             , rm.driver_tel_no
+             , rm.car_no
+             , rm.delv_fee
+             , od.start_wh_cd as start_cd
+             , sw.wh_nm as start_name
+             , od.start_tel_no
+             , od.start_fax_no
+             , od.start_address
+             , od.end_wh_cd as end_cd
+             , ew.wh_nm as end_name
+             , od.end_tel_no
+             , od.end_fax_no
+             , od.end_address
+             , od.delv_cust_remark
+             , od.item_cd
+             , od.stock_id
+             , od.serial_id
+             , od.machine_no
+             , od.order_qty
+             , od.order_price
+             , od.order_amount
+             , od.option_1
+             , od.option_2
+             , od.option_3
+             , 'storage' as type
+             , '' as agency_order_no
+             , od.start_date
+             , od.end_date
+          from tb_release_order_storage od
+          left join tb_release_storage_detail rd on rd.release_order_no = od.release_order_no
+          left join tb_release_storage rm on rm.release_no = rd.release_no
+          left join vw_ma_wh_release sw on sw.wh_cd = od.start_wh_cd
+          left join vw_ma_wh_release ew on ew.wh_cd = od.end_wh_cd
+         where 1 = 1
+           and ifnull(od.release_order_status,'작성') <> '작성'
+           and od.in_out_type = '외자'	-- 외자인 경우 해성운수
+           and (ifnull({from_ser},'') = '' or od.release_order_date >= {from_ser})
+           and (ifnull({to_ser},'') = '' or od.release_order_date <= {to_ser})
+           and (ifnull({status_ser},'') = '' or ({status_ser} = '미완료' and rm.release_no is null) or ({status_ser} = '완료' and rm.release_no is not null))
+       ) a
+  left join vw_ma_item b on b.item_cd = a.item_cd
+  left join vw_ma_item_parts_option ot1 on ot1.option_item_cd = a.option_1 and ot1.item_cd = a.item_cd and ot1.parts_option_type = 'W'
+  left join vw_ma_item_parts_option ot2 on ot2.option_item_cd = a.option_2 and ot2.item_cd = a.item_cd and ot2.parts_option_type = 'T'
+  left join vw_ma_item_parts_option ot3 on ot3.option_item_cd = a.option_3 and ot3.item_cd = a.item_cd and ot3.parts_option_type = 'H'
+ order by case when a.release_order_status = '미접수' then 1
+               when a.release_order_status = '접수' then 2
+               when a.release_order_status = '완료' then 3
+               else 0 end
+        , a.release_order_date desc
+        , case when a.type = 'wanted' then 1
+               when a.type = 'cust' then 2
+               when a.type = 'move' then 3
+               when a.type = 'storage' then 4
+               else 0 end
